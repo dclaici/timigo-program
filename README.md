@@ -1,4 +1,15 @@
-# timigo-program
+# timiGO
+
+Aplicație gratuită pentru transportul public și ghidul orașului Timișoara — trasee, orare, navigare pas cu pas (și pe Apple Watch), ghid în 8 limbi și programul cultural al orașului.
+
+*Free public transport and city guide app for Timișoara, Romania.*
+
+- **Suport / Support:** https://github.com/dclaici/timigo-program/issues
+- **Confidențialitate / Privacy:** [PRIVACY.md](PRIVACY.md)
+
+---
+
+## Programul cultural (events.json)
 
 Programul cultural al Timișoarei — spectacole, concerte și reprezentații — pentru aplicația **timiGO**.
 
