@@ -1,0 +1,5 @@
+{
+  "liveEnabled": true,
+  "liveUrl": "https://timigo-live.dclaici.workers.dev/",
+  "pollSeconds": 15
+}
