@@ -28,6 +28,7 @@ export const VENUES: Record<string, { n: string; la: number; lo: number; match: 
   csiky: { n: 'Teatrul Maghiar „Csiky Gergely”', la: 45.75442, lo: 21.2264, match: 'maghiar|csiky', web: 'https://tm-t.ro/programme' },
   merlin: { n: 'Teatrul Merlin', la: 45.7458, lo: 21.21437, match: 'merlin', web: 'https://www.teatrul-merlin.ro/' },
   fila: { n: 'Filarmonica Banatul', la: 45.75055, lo: 21.22627, match: 'filarmonica', web: 'https://filarmonicabanatul.ro/evenimente/' },
+  fitt: { n: 'Casa Tineretului (FITT)', la: 45.74098, lo: 21.2402, match: 'casa tineretului|fitt', web: 'https://fitt.iabilet.ro/' },
   // Doar legătura „Programul” (site-urile nu pot fi citite automat — vezi mai jos).
   mnart: { n: 'Muzeul Național de Artă', la: 45.75735, lo: 21.22929, match: 'muzeul de art', web: 'https://www.muzeuldeartatm.ro/' },
   mnab: { n: 'Muzeul Național al Banatului', la: 45.75706, lo: 21.23258, match: 'muzeul na[țţt]ional al banatului', web: 'https://mnab.ro/exhibition/' },
@@ -272,6 +273,36 @@ async function merlin(): Promise<Ev[]> {
   return out;
 }
 
+/** Casa Tineretului (FITT) — pagina proprie de bilete a fundației (iabilet, „white label”). */
+async function fitt(): Promise<Ev[]> {
+  const base = 'https://fitt.iabilet.ro/';
+  const html = await get(base);
+  const out: Ev[] = [];
+  for (const block of html.split('data-event-list="item"').slice(1)) {
+    if (!/event-is-future/.test(block.slice(0, 300))) continue;
+    const a = /<div class="desc">\s*<a href="([^"]+)"[^>]*>\s*<h1>([\s\S]*?)<\/h1>/.exec(block);
+    const ps = [...block.matchAll(/<p>([\s\S]*?)<\/p>/g)].map((m) => text(m[1]));
+    if (!a || ps.length < 2) continue;
+    // Doar concertele din Casa Tineretului (nu cele organizate de FITT în alte locuri).
+    if (!/casa tineretului|fitt/i.test(ps[0])) continue;
+    const d = /(\d{1,2})\s+([a-zăâîșț]+)(?:\s+(\d{4}))?/i.exec(ps[1]);
+    if (!d || !month(d[2])) continue;
+    const mo = month(d[2]);
+    const date = `${d[3] ?? yearFor(mo)}-${pad(mo)}-${pad(d[1])}`;
+    if (date < today || date > horizon) continue;
+    // „ora 20:00 · acces de la 19:00” sau doar „acces de la 19:00” (atunci ora e cea a accesului).
+    const start = /ora\s*(\d{1,2}):(\d{2})/i.exec(ps[1]);
+    const doors = /acces de la\s*(\d{1,2}):(\d{2})/i.exec(ps[1]);
+    const t = start ?? doors;
+    const url = abs(base, a[1])?.replace(/\?.*$/, '');
+    out.push({
+      v: 'fitt', t: text(a[2]).replace(/^Timi[sș]oara:\s*/i, ''), s: t ? `${date}T${pad(t[1])}:${t[2]}` : date,
+      k: 'concert', u: url, x: start && doors ? `acces de la ${pad(doors[1])}:${doors[2]}` : !start && doors ? 'ora accesului' : undefined,
+    });
+  }
+  return out;
+}
+
 /*
  * Muzeul Național al Banatului (robots.txt nu permite citirea paginii de expoziții) și cinematografele
  * orașului (cinema-timisoara.ro își protejează programul împotriva citirii automate): pentru ele aplicația
@@ -285,7 +316,7 @@ async function main() {
   if (!output) { console.error('Folosire: build-events.ts <ieșire.json>'); process.exit(2); }
   const sources: [string, string, () => Promise<Ev[]>][] = [
     ['Opera', 'opera', opera], ['Teatrul Național', 'tnt', tnt], ['Teatrul German', 'german', german], ['Teatrul Maghiar', 'csiky', csiky],
-    ['Teatrul Merlin', 'merlin', merlin], ['Filarmonica', 'fila', filarmonica],
+    ['Teatrul Merlin', 'merlin', merlin], ['Filarmonica', 'fila', filarmonica], ['Casa Tineretului (FITT)', 'fitt', fitt],
   ];
   // Programul de ieri (--prev): dacă o sursă nu răspunde azi, îi păstrăm spectacolele care încă urmează.
   const pi = process.argv.indexOf('--prev');
