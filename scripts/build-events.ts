@@ -297,7 +297,7 @@ async function fitt(): Promise<Ev[]> {
     const url = abs(base, a[1])?.replace(/\?.*$/, '');
     out.push({
       v: 'fitt', t: text(a[2]).replace(/^Timi[sș]oara:\s*/i, ''), s: t ? `${date}T${pad(t[1])}:${t[2]}` : date,
-      k: 'concert', u: url, x: start && doors ? `acces de la ${pad(doors[1])}:${doors[2]}` : !start && doors ? 'ora accesului' : undefined,
+      k: 'concert', u: url, b: url, x: start && doors ? `acces de la ${pad(doors[1])}:${doors[2]}` : !start && doors ? 'ora accesului' : undefined,
     });
   }
   return out;
