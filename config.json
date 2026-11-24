@@ -1,5 +1,6 @@
 {
   "liveEnabled": true,
   "liveUrl": "https://timigo-live.dclaici.workers.dev/",
-  "pollSeconds": 15
+  "pollSeconds": 15,
+  "simPublicAndroid": true
 }
