@@ -1,0 +1,20 @@
+{
+  "at": 1,
+  "festivals": [
+    {
+      "id": "craciun-2026",
+      "icon": "🎄",
+      "n": "Târgul de Crăciun",
+      "en": "Christmas Market",
+      "from": "2026-11-29",
+      "to": "2027-01-07",
+      "web": "https://www.casadeculturatm.ro/",
+      "venues": [
+        { "n": "Piața Victoriei", "la": 45.75288, "lo": 21.22533 },
+        { "n": "Piața Libertății", "la": 45.75596, "lo": 21.22716 },
+        { "n": "Piața Unirii", "la": 45.75792, "lo": 21.22933 },
+        { "n": "Piața Sfântul Gheorghe", "la": 45.75553, "lo": 21.22898 }
+      ]
+    }
+  ]
+}
