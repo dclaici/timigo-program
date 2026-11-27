@@ -35,6 +35,31 @@
           "la": 45.75553,
           "lo": 21.22898
         }
+      ],
+      "prog": []
+    },
+    {
+      "id": "ziua-nationala-2026",
+      "icon": "🇷🇴",
+      "n": "Ziua Națională",
+      "en": "Romania's National Day",
+      "from": "2026-12-01",
+      "to": "2026-12-01",
+      "web": "https://www.primariatm.ro/",
+      "venues": [
+        {
+          "n": "Piața Victoriei",
+          "la": 45.75288,
+          "lo": 21.22533
+        }
+      ],
+      "prog": [
+        {
+          "d": "2026-12-01",
+          "t": "18:00",
+          "n": "Ziua Națională a României: spectacol și retragere cu torțe",
+          "k": "concert"
+        }
       ]
     }
   ]

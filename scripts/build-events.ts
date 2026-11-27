@@ -17,7 +17,7 @@ import tls from 'node:tls';
 import https from 'node:https';
 import { X509Certificate } from 'node:crypto';
 
-type Kind = 'opera' | 'theatre' | 'concert' | 'kids' | 'film' | 'exhibition' | 'tour';
+type Kind = 'opera' | 'theatre' | 'concert' | 'kids' | 'film' | 'exhibition' | 'tour' | 'sport';
 export interface Ev { v: string; t: string; s?: string; k: Kind; u?: string; b?: string; x?: string; a?: string }
 
 /** Locurile: numele afișat, coordonatele și un model după care le găsim printre locurile din ghid. */
@@ -67,7 +67,22 @@ const fromUtc = (d: Date) => {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(d).map((x) => [x.type, x.value]));
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 };
-const cap = (s: string) => (s === s.toUpperCase() && /[A-ZĂÂÎȘȚ]{4}/.test(s) ? s.toLowerCase().replace(/(^|[\s/(„"-])(\p{L})/gu, (_, a, b) => a + b.toUpperCase()) : s);
+/** Cuvintele mici din titluri, care rămân cu literă mică în interior („Amintiri din epoca de școală”). */
+const SMALL = new Set(['a', 'al', 'ale', 'ai', 'și', 'si', 'de', 'din', 'la', 'în', 'in', 'cu', 'pe', 'pentru', 'despre', 'sau', 'ori', 'prin', 'spre', 'sub', 'după', 'fără', 'un', 'o', 'și-a', 'and', 'the', 'of', 'und', 'der', 'die', 'das', 'és']);
+/** Titlurile vin uneori CU MAJUSCULE sau Cu Fiecare Cuvânt Cu Majusculă: le aducem la forma obișnuită. */
+const cap = (s: string) => {
+  const words = s.split(/\s+/);
+  const allCaps = s === s.toUpperCase() && /[A-ZĂÂÎȘȚ]{4}/.test(s);
+  const titleCase = words.length >= 3 && words.filter((w) => /^\p{Lu}/u.test(w)).length >= words.length - 1 && words.some((w) => SMALL.has(w.toLowerCase()));
+  if (!allCaps && !titleCase) return s;
+  let first = true;
+  return s.replace(/[\p{L}\p{M}'’-]+/gu, (w) => {
+    const lw = w.toLowerCase();
+    const out = !first && SMALL.has(lw) ? lw : allCaps ? lw.charAt(0).toUpperCase() + lw.slice(1) : w;
+    first = false;
+    return out;
+  });
+};
 
 /** Ce am primit (pentru diagnostic când o sursă nu dă nimic). */
 const lastFetch: string[] = [];
@@ -339,6 +354,39 @@ async function main() {
       console.log(`::warning title=Program ${name}::${String(e).slice(0, 300)} · ${lastFetch.join(' | ').slice(0, 500)}`);
     }
   }
+  // Programul scenelor de la festivaluri (Târgul de Crăciun, JAZZx, Plai…), din festivals.json (ținut de mână):
+  // fiecare moment apare în Program, în ziua lui, cu locul festivalului ca „loc”.
+  type FestItem = { d: string; t?: string; n: string; k?: Kind; v?: number; x?: string };
+  type Fest = { id: string; n: string; web?: string; program?: string; venues: { n: string; la: number; lo: number }[]; prog?: FestItem[] };
+  const festFile = new URL('../festivals.json', import.meta.url);
+  const fests: Fest[] = existsSync(festFile) ? (JSON.parse(readFileSync(festFile, 'utf8')).festivals ?? []) : [];
+  let festCount = 0;
+  for (const f of fests) {
+    for (const it of f.prog ?? []) {
+      if (it.d < today || it.d > horizon) continue;
+      const vi = it.v ?? 0;
+      const venue = f.venues[vi] ?? f.venues[0];
+      if (!venue) continue;
+      const key = `f_${f.id}_${vi}`;
+      VENUES[key] ??= { n: `${venue.n} · ${f.n}`, la: venue.la, lo: venue.lo, match: '^$', web: f.program ?? f.web ?? '' };
+      all.push({ v: key, t: it.n, s: it.t ? `${it.d}T${it.t}` : it.d, k: it.k ?? 'concert', u: f.program ?? f.web, x: it.x });
+      festCount++;
+    }
+  }
+  report.push(`Festivaluri: ${festCount}`);
+  // Meciurile de acasă și cursele: listă separată „sport” (versiunile vechi ale aplicației n-o citesc).
+  type SportItem = { d: string; t?: string; n: string; venue: { n: string; la: number; lo: number }; u?: string; b?: string; x?: string };
+  const sportFile = new URL('../sport.json', import.meta.url);
+  const sportIn: SportItem[] = existsSync(sportFile) ? (JSON.parse(readFileSync(sportFile, 'utf8')).items ?? []) : [];
+  const sport: Ev[] = [];
+  for (const it of sportIn) {
+    if (it.d < today || it.d > horizon) continue;
+    const key = `s_${it.venue.n.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '_')}`;
+    VENUES[key] ??= { n: it.venue.n, la: it.venue.la, lo: it.venue.lo, match: '^$', web: it.u ?? '' };
+    sport.push({ v: key, t: it.n, s: it.t ? `${it.d}T${it.t}` : it.d, k: 'sport', u: it.u, b: it.b, x: it.x });
+  }
+  sport.sort((a, b) => (a.s ?? '9').localeCompare(b.s ?? '9'));
+  report.push(`Sport: ${sport.length}`);
   // Același spectacol, la aceeași oră, o singură dată.
   const seen = new Set<string>();
   const events = all.filter((e) => { const k = `${e.v}|${e.t.toLowerCase()}|${e.s}`; if (seen.has(k)) return false; seen.add(k); return true; })
@@ -347,7 +395,8 @@ async function main() {
     e.t = cap(e.t);
     for (const k of Object.keys(e) as (keyof Ev)[]) if (e[k] === undefined || e[k] === '') delete e[k];
   }
-  writeFileSync(output, JSON.stringify({ v: 1, at: now.toISOString(), venues: Object.fromEntries(Object.entries(VENUES).map(([k, v]) => [k, { n: v.n, la: v.la, lo: v.lo, m: v.match, w: v.web, ...(v.r ? { r: v.r } : {}) }])), events }));
+  for (const e of sport) for (const k of Object.keys(e) as (keyof Ev)[]) if (e[k] === undefined || e[k] === '') delete e[k];
+  writeFileSync(output, JSON.stringify({ v: 1, at: now.toISOString(), venues: Object.fromEntries(Object.entries(VENUES).map(([k, v]) => [k, { n: v.n, la: v.la, lo: v.lo, m: v.match, w: v.web, ...(v.r ? { r: v.r } : {}) }])), events, sport }));
   console.log(`::notice title=Program::${events.length} evenimente — ${report.join(', ')}`);
 }
 
