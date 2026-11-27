@@ -10,10 +10,31 @@
       "to": "2027-01-07",
       "web": "https://www.casadeculturatm.ro/",
       "venues": [
-        { "n": "Piața Victoriei", "la": 45.75288, "lo": 21.22533 },
-        { "n": "Piața Libertății", "la": 45.75596, "lo": 21.22716 },
-        { "n": "Piața Unirii", "la": 45.75792, "lo": 21.22933 },
-        { "n": "Piața Sfântul Gheorghe", "la": 45.75553, "lo": 21.22898 }
+        {
+          "n": "Parcul Central",
+          "la": 45.75115,
+          "lo": 21.22339
+        },
+        {
+          "n": "Piața Victoriei",
+          "la": 45.75288,
+          "lo": 21.22533
+        },
+        {
+          "n": "Piața Libertății",
+          "la": 45.75596,
+          "lo": 21.22716
+        },
+        {
+          "n": "Piața Unirii",
+          "la": 45.75792,
+          "lo": 21.22933
+        },
+        {
+          "n": "Piața Sfântul Gheorghe",
+          "la": 45.75553,
+          "lo": 21.22898
+        }
       ]
     }
   ]
