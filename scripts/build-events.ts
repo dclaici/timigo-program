@@ -75,12 +75,17 @@ const cap = (s: string) => {
   const allCaps = s === s.toUpperCase() && /[A-ZĂÂÎȘȚ]{4}/.test(s);
   const titleCase = words.length >= 3 && words.filter((w) => /^\p{Lu}/u.test(w)).length >= words.length - 1 && words.some((w) => SMALL.has(w.toLowerCase()));
   if (!allCaps && !titleCase) return s;
-  let first = true;
-  return s.replace(/[\p{L}\p{M}'’-]+/gu, (w) => {
+  return s.replace(/[\p{L}\p{M}'’]+/gu, (w: string, off: number) => {
     const lw = w.toLowerCase();
-    const out = !first && SMALL.has(lw) ? lw : allCaps ? lw.charAt(0).toUpperCase() + lw.slice(1) : w;
-    first = false;
-    return out;
+    const prev = s.slice(0, off);
+    const before = prev.trimEnd().slice(-1);
+    // Început de propoziție: primul cuvânt sau după : – - . „ ( " (ex. „Giuseppe Verdi: La Traviata”).
+    const start = off === 0 || ':–-.„"('.includes(before);
+    if (!start && SMALL.has(lw) && prev.slice(-1) !== '-') return lw;
+    // Cifre romane (IX), inițiale (W.A.), sigle scurte (ABBA): neatinse.
+    if (allCaps && prev.slice(-1) === '-' && w.length <= 2) return lw; // „IX-A” → „IX-a”
+    if (!allCaps || /^[IVXLCDM]+$/.test(w) || w.length === 1 || s.charAt(off + w.length) === '.') return w;
+    return lw.charAt(0).toUpperCase() + lw.slice(1);
   });
 };
 
@@ -94,11 +99,12 @@ async function allowed(u: string): Promise<boolean> {
     try {
       const r = await fetch(`${origin}/robots.txt`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(15000) });
       if (r.ok) {
-        let applies = false;
+        // Liniile User-agent consecutive formează un singur grup (se adună cu „sau”).
+        let applies = false; let inAgents = false;
         for (const line of (await r.text()).split('\n')) {
-          const [k, ...rest] = line.split(':'); const v = rest.join(':').trim(); const key = k.trim().toLowerCase();
-          if (key === 'user-agent') applies = v === '*' || /timigo/i.test(v);
-          else if (applies && key === 'disallow' && v) dis.push(v);
+          const [k, ...rest] = line.split('#')[0].split(':'); const v = rest.join(':').trim(); const key = k.trim().toLowerCase();
+          if (key === 'user-agent') { const me = v === '*' || /timigo/i.test(v); applies = inAgents ? applies || me : me; inAgents = true; }
+          else if (key) { inAgents = false; if (applies && key === 'disallow' && v) dis.push(v); }
         }
       }
     } catch { /* fără robots.txt */ }
@@ -334,19 +340,24 @@ async function rugby(): Promise<SportItem[]> {
   const out: SportItem[] = [];
   for (const page of ['https://rugbyromania.ro/superliga/program/', 'https://rugbyromania.ro/cupa-romaniei/cupa-romaniei-program-si-rezultate/']) {
     let html = '';
-    try { html = await get(page); } catch { continue; }
-    for (const m of html.matchAll(/<tr class="tr_cu_link" data-href="([^"]*)"[\s\S]*?<td class="data_meci"[^>]*>([\s\S]*?)<\/td>[\s\S]*?<td class="stadion">([\s\S]*?)<\/td>[\s\S]*?<td class="echipe_meci">([\s\S]*?)<\/td>/g)) {
-      const when = text(m[2]);
+    try { html = await get(page); } catch (e) { console.log(`::warning title=Program rugby::${page} nu răspunde: ${String(e).slice(0, 200)}`); continue; }
+    const rows = html.split('<tr ').filter((r) => r.startsWith('class="tr_cu_link"'));
+    if (!rows.length) { console.log(`::warning title=Program rugby::${page} s-a citit, dar nu are niciun meci (s-a schimbat pagina?)`); continue; }
+    for (const row of rows) {
+      const href = /data-href="([^"]*)"/.exec(row)?.[1];
+      const when = text(/<td class="data_meci"[^>]*>([\s\S]*?)<\/td>/.exec(row)?.[1] ?? '');
+      const stadium = text(/<td class="stadion">([\s\S]*?)<\/td>/.exec(row)?.[1] ?? '');
+      const match = text(/<td class="echipe_meci">([\s\S]*?)<\/td>/.exec(row)?.[1] ?? '');
       const d = /(\d{2})\.(\d{2})\.(\d{4})/.exec(when);
-      if (!d) continue;
+      if (!d || !match) continue;
       const date = `${d[3]}-${d[2]}-${d[1]}`;
       if (date < today || date > horizon) continue;
-      const teams = text(m[4]).split(/\s+[–-]\s+/);
+      const teams = match.split(/\s+[–-]\s+/);
       if (teams.length < 2 || !/timi[sș]oara/i.test(teams[0])) continue;
-      const a = arena(text(m[3]));
-      if (!a) continue;
+      const a = arena(stadium);
+      if (!a) { console.log(`::notice title=Program rugby::meci acasă pe un stadion necunoscut („${stadium}”), sărit: ${match} ${date}`); continue; }
       const t = /(\d{1,2}):(\d{2})/.exec(when);
-      out.push({ d: date, t: t ? `${pad(t[1])}:${t[2]}` : undefined, n: `🏉 ${teams[0]} – ${teams[1]}`, venue: a, u: abs(page, m[1]) });
+      out.push({ d: date, t: t ? `${pad(t[1])}:${t[2]}` : undefined, n: `🏉 ${teams[0]} – ${teams[1]}`, venue: a, u: abs(page, href) });
     }
   }
   return out;
@@ -393,10 +404,18 @@ async function main() {
   type FestItem = { d: string; t?: string; n: string; k?: Kind; v?: number; x?: string };
   type Fest = { id: string; n: string; web?: string; program?: string; venues: { n: string; la: number; lo: number }[]; prog?: FestItem[] };
   const festFile = new URL('../festivals.json', import.meta.url);
-  const fests: Fest[] = existsSync(festFile) ? (JSON.parse(readFileSync(festFile, 'utf8')).festivals ?? []) : [];
+  const readJson = <T,>(file: URL, key: string): T[] => {
+    if (!existsSync(file)) return [];
+    try { const v = JSON.parse(readFileSync(file, 'utf8'))[key]; return Array.isArray(v) ? v : []; }
+    catch (e) { console.log(`::warning title=Program::${file.pathname.split('/').pop()} nu e JSON valid, ignorat: ${String(e).slice(0, 200)}`); return []; }
+  };
+  const okDay = (i: { d?: unknown; t?: unknown; n?: unknown }) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(String(i?.d)) && (i.t === undefined || /^\d{2}:\d{2}$/.test(String(i.t))) && typeof i.n === 'string';
+  const fests: Fest[] = readJson<Fest>(festFile, 'festivals').filter((f) => f && typeof f.id === 'string' && Array.isArray(f.venues));
   let festCount = 0;
   for (const f of fests) {
-    for (const it of f.prog ?? []) {
+    for (const it of Array.isArray(f.prog) ? f.prog : []) {
+      if (!okDay(it)) { console.log(`::warning title=Program::moment greșit în festivals.json (${f.id}): ${JSON.stringify(it).slice(0, 150)}`); continue; }
       if (it.d < today || it.d > horizon) continue;
       const vi = it.v ?? 0;
       const venue = f.venues[vi] ?? f.venues[0];
@@ -410,7 +429,11 @@ async function main() {
   report.push(`Festivaluri: ${festCount}`);
   // Meciurile de acasă și cursele: listă separată „sport” (versiunile vechi ale aplicației n-o citesc).
   const sportFile = new URL('../sport.json', import.meta.url);
-  const sportIn: SportItem[] = existsSync(sportFile) ? (JSON.parse(readFileSync(sportFile, 'utf8')).items ?? []) : [];
+  const sportIn: SportItem[] = readJson<SportItem>(sportFile, 'items').filter((it) => {
+    const ok = okDay(it) && it.venue && typeof it.venue.n === 'string' && typeof it.venue.la === 'number' && typeof it.venue.lo === 'number';
+    if (!ok) console.log(`::warning title=Program::intrare greșită în sport.json: ${JSON.stringify(it).slice(0, 150)}`);
+    return ok;
+  });
   try { const r = await rugby(); sportIn.push(...r); report.push(`Rugby: ${r.length}`); } catch (e) { console.log(`::warning title=Program rugby::${String(e).slice(0, 300)}`); }
   const sport: Ev[] = [];
   for (const it of sportIn) {
@@ -418,6 +441,12 @@ async function main() {
     const key = `s_${it.venue.n.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '_')}`;
     VENUES[key] ??= { n: it.venue.n, la: it.venue.la, lo: it.venue.lo, match: '^$', web: it.u ?? '' };
     sport.push({ v: key, t: it.n, s: it.t ? `${it.d}T${it.t}` : it.d, k: 'sport', u: it.u, b: it.b, x: it.x });
+  }
+  // Dacă azi nu avem nimic din surse automate, păstrăm meciurile de ieri care încă urmează.
+  if (!sport.some((e) => e.t.startsWith('🏉')) && pi > 0 && existsSync(process.argv[pi + 1])) {
+    const prevSport: Ev[] = JSON.parse(readFileSync(process.argv[pi + 1], 'utf8')).sport ?? [];
+    const prevVen = JSON.parse(readFileSync(process.argv[pi + 1], 'utf8')).venues ?? {};
+    for (const e of prevSport) if (e.t.startsWith('🏉') && (e.s ?? '') >= today) { sport.push(e); if (prevVen[e.v]) VENUES[e.v] ??= { n: prevVen[e.v].n, la: prevVen[e.v].la, lo: prevVen[e.v].lo, match: '^$', web: prevVen[e.v].w ?? '' }; }
   }
   sport.sort((a, b) => (a.s ?? '9').localeCompare(b.s ?? '9'));
   report.push(`Sport: ${sport.length}`);
