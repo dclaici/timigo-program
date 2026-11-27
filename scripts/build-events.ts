@@ -318,6 +318,40 @@ async function fitt(): Promise<Ev[]> {
   return out;
 }
 
+/* --------------------------------- Sport ---------------------------------- */
+
+export interface SportItem { d: string; t?: string; n: string; venue: { n: string; la: number; lo: number }; u?: string; b?: string; x?: string }
+/** Stadioanele și sălile din Timișoara, după numele din programele federațiilor. */
+const ARENAS: [RegExp, { n: string; la: number; lo: number }][] = [
+  [/r[aă]s?[cș]?canu/i, { n: 'Stadionul „Gheorghe Rășcanu”', la: 45.75625, lo: 21.18406 }],
+  [/constantin jude|olimpia/i, { n: 'Sala „Constantin Jude”', la: 45.74621, lo: 21.24151 }],
+  [/electrica/i, { n: 'Stadionul Electrica', la: 45.76931, lo: 21.25448 }],
+];
+const arena = (s: string) => ARENAS.find(([re]) => re.test(s))?.[1];
+
+/** Rugby: programul oficial al Federației (SuperLiga și Cupa României) — doar meciurile de acasă ale echipei din Timișoara. */
+async function rugby(): Promise<SportItem[]> {
+  const out: SportItem[] = [];
+  for (const page of ['https://rugbyromania.ro/superliga/program/', 'https://rugbyromania.ro/cupa-romaniei/cupa-romaniei-program-si-rezultate/']) {
+    let html = '';
+    try { html = await get(page); } catch { continue; }
+    for (const m of html.matchAll(/<tr class="tr_cu_link" data-href="([^"]*)"[\s\S]*?<td class="data_meci"[^>]*>([\s\S]*?)<\/td>[\s\S]*?<td class="stadion">([\s\S]*?)<\/td>[\s\S]*?<td class="echipe_meci">([\s\S]*?)<\/td>/g)) {
+      const when = text(m[2]);
+      const d = /(\d{2})\.(\d{2})\.(\d{4})/.exec(when);
+      if (!d) continue;
+      const date = `${d[3]}-${d[2]}-${d[1]}`;
+      if (date < today || date > horizon) continue;
+      const teams = text(m[4]).split(/\s+[–-]\s+/);
+      if (teams.length < 2 || !/timi[sș]oara/i.test(teams[0])) continue;
+      const a = arena(text(m[3]));
+      if (!a) continue;
+      const t = /(\d{1,2}):(\d{2})/.exec(when);
+      out.push({ d: date, t: t ? `${pad(t[1])}:${t[2]}` : undefined, n: `🏉 ${teams[0]} – ${teams[1]}`, venue: a, u: abs(page, m[1]) });
+    }
+  }
+  return out;
+}
+
 /*
  * Muzeul Național al Banatului (robots.txt nu permite citirea paginii de expoziții) și cinematografele
  * orașului (cinema-timisoara.ro își protejează programul împotriva citirii automate): pentru ele aplicația
@@ -375,9 +409,9 @@ async function main() {
   }
   report.push(`Festivaluri: ${festCount}`);
   // Meciurile de acasă și cursele: listă separată „sport” (versiunile vechi ale aplicației n-o citesc).
-  type SportItem = { d: string; t?: string; n: string; venue: { n: string; la: number; lo: number }; u?: string; b?: string; x?: string };
   const sportFile = new URL('../sport.json', import.meta.url);
   const sportIn: SportItem[] = existsSync(sportFile) ? (JSON.parse(readFileSync(sportFile, 'utf8')).items ?? []) : [];
+  try { const r = await rugby(); sportIn.push(...r); report.push(`Rugby: ${r.length}`); } catch (e) { console.log(`::warning title=Program rugby::${String(e).slice(0, 300)}`); }
   const sport: Ev[] = [];
   for (const it of sportIn) {
     if (it.d < today || it.d > horizon) continue;

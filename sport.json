@@ -1,0 +1,6 @@
+{
+  "note": "Curse și meciuri adăugate de mână (data AAAA-LL-ZZ, ora HH:MM). Meciurile de rugby vin automat de la Federație.",
+  "items": [
+    { "d": "2027-03-21", "n": "🏃 Timișoara 21K (semimaraton, 10 km, 5 km)", "venue": { "n": "Piața Libertății (start/sosire)", "la": 45.75596, "lo": 21.22716 }, "u": "https://worldsmarathons.com/marathon/timisoara-21k", "x": "străzi închise în centru" }
+  ]
+}
