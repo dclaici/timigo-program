@@ -1,18 +1,22 @@
-# Schimbări în ghid — 2026-11-23
+# Schimbări în ghid — 2026-11-27
 
-Locuri: 2049 → 2049. Apărute 0 · dispărute 0 · redenumite 0 · schimbate 0 · site-uri moarte 27.
+Locuri: 2049 → 2051. Apărute 3 · dispărute 1 · redenumite 2 · schimbate 2 · site-uri moarte 27.
 
 ## Redenumite
-- nimic
+- Farmacia Catena → **Catena** (pharmacy) · https://www.openstreetmap.org/?mlat=45.76225&mlon=21.24757#map=19/45.76225/21.24757
+- Profi Go → **Annabella** (supermarket) · https://www.openstreetmap.org/?mlat=45.74924&mlon=21.24068#map=19/45.74924/21.24068
 
 ## Au apărut
-- nimic
+- Waza Spa Iulius Town (spa) — Iulius Town, Piața Consiliul Europei 2, etaj 1 · https://www.openstreetmap.org/?mlat=45.76575&mlon=21.2283#map=19/45.76575/21.2283
+- Gym One 1 (fitness) — Strada Varșovia 3 · https://www.openstreetmap.org/?mlat=45.78638&mlon=21.23565#map=19/45.78638/21.23565
+- Gym One 4 (fitness) — Strada Memorandului 78 · https://www.openstreetmap.org/?mlat=45.74091&mlon=21.23328#map=19/45.74091/21.23328
 
 ## Au dispărut (închise în OSM/Foursquare sau șterse)
-- nimic
+- Gym One (fitness) · https://www.openstreetmap.org/?mlat=45.76879&mlon=21.23452#map=19/45.76879/21.23452
 
 ## Schimbate
-- nimic
+- HașDe (restaurant): programul
+- Zone Cafe (bar): programul
 
 ## Site-uri care nu mai merg
 - Biserica Militară: http://www.parohiacetate.ro/ (domeniul nu mai există)
