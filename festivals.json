@@ -39,6 +39,31 @@
       "prog": []
     },
     {
+      "id": "iulius-craciun-2026",
+      "icon": "⛸️",
+      "n": "Crăciun la Iulius Town",
+      "en": "Christmas at Iulius Town",
+      "from": "2026-11-27",
+      "to": "2027-01-10",
+      "web": "https://iuliustown.ro/ro/evenimente",
+      "venues": [
+        {
+          "n": "Iulius Town (patinoar în Iulius Gardens, trenuleț în Atrium)",
+          "la": 45.76669,
+          "lo": 21.22878
+        }
+      ],
+      "prog": [
+        {
+          "d": "2026-12-01",
+          "t": "17:00",
+          "n": "Caravana Colindelor: spectacol caritabil de colinde",
+          "k": "concert",
+          "x": "donațiile merg la Fundația Speranța"
+        }
+      ]
+    },
+    {
       "id": "ziua-nationala-2026",
       "icon": "🇷🇴",
       "n": "Ziua Națională",
